@@ -670,3 +670,14 @@ export default function Home() {
     </div>
   )
 }
+export default function Home() {
+  return (
+    <main style={{background:'#060D1A',minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',color:'#E8F0FF',fontFamily:'sans-serif'}}>
+      <div style={{textAlign:'center'}}>
+        <h1 style={{fontSize:'2rem',fontWeight:'bold',color:'#3D7BFF'}}>⬡ APEX TRADE</h1>
+        <p style={{color:'#7A8FA6',marginTop:'8px'}}>Professional Trading Platform</p>
+        <p style={{color:'#00E676',marginTop:'16px',fontSize:'0.875rem'}}>✅ Deploy สำเร็จ!</p>
+      </div>
+    </main>
+  )
+}
