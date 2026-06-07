@@ -6,7 +6,7 @@ import cors from 'cors'
 import helmet from 'helmet'
 import morgan from 'morgan'
 import { createServer } from 'http'
-import { config } from './config'
+import { config, isProduction } from './config'
 import { connectRedis } from './config/redis'
 import { initWebSocket } from './websocket/ws.server'
 
@@ -19,9 +19,22 @@ import riskRouter    from './modules/risk/risk.controller'
 const app  = express()
 const http = createServer(app)
 
+const allowedOrigins = new Set([config.FRONTEND_URL])
+
+function isAllowedOrigin(origin?: string) {
+  if (!origin) return true
+  if (allowedOrigins.has(origin)) return true
+  return !isProduction && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+}
+
 // ── Middleware ────────────────────────────────────────────────
 app.use(helmet())
-app.use(cors({ origin: config.FRONTEND_URL, credentials: true }))
+app.use(cors({
+  origin(origin, callback) {
+    callback(null, isAllowedOrigin(origin))
+  },
+  credentials: true,
+}))
 app.use(express.json())
 app.use(morgan(config.NODE_ENV === 'production' ? 'combined' : 'dev'))
 

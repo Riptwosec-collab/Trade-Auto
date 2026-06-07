@@ -11,8 +11,8 @@ import {
   OrderAction,
   OrderType,
   SecType,
-  Currency,
-  Exchange,
+  BarSizeSetting,
+  WhatToShow,
 } from '@stoqey/ib'
 import { config } from '../../config'
 
@@ -74,8 +74,8 @@ function makeStockContract(symbol: string): Contract {
   return {
     symbol,
     secType: SecType.STK,
-    currency: Currency.USD,
-    exchange: Exchange.SMART,
+    currency: 'USD',
+    exchange: 'SMART',
   }
 }
 
@@ -84,7 +84,7 @@ function makeForexContract(base: string, quote = 'USD'): Contract {
     symbol: base,
     secType: SecType.CASH,
     currency: quote,
-    exchange: Exchange.IDEALPRO,
+    exchange: 'IDEALPRO',
   }
 }
 
@@ -92,8 +92,8 @@ function makeFutureContract(symbol: string, expiry: string): Contract {
   return {
     symbol,
     secType: SecType.FUT,
-    currency: Currency.USD,
-    exchange: Exchange.CME,
+    currency: 'USD',
+    exchange: 'CME',
     lastTradeDateOrContractMonth: expiry,
   }
 }
@@ -229,7 +229,7 @@ export function cancelIBKROrder(orderId: number): void {
 export async function getIBKRHistoricalData(
   symbol: string,
   duration  = '1 D',
-  barSize   = '1 hour',
+  barSize: BarSizeSetting | string = BarSizeSetting.HOURS_ONE,
 ): Promise<any[]> {
   return new Promise((resolve, reject) => {
     const client   = getIBKRClient()
@@ -238,23 +238,22 @@ export async function getIBKRHistoricalData(
     const bars: any[] = []
     const timeout  = setTimeout(() => reject(new Error('Historical data timeout')), 15_000)
 
-    client.on(EventName.historicalData, (_reqId, bar) => {
+    client.on(EventName.historicalData, (_reqId, time, open, high, low, close, volume) => {
       bars.push({
-        time:   bar.time,
-        open:   bar.open,
-        high:   bar.high,
-        low:    bar.low,
-        close:  bar.close,
-        volume: bar.volume,
+        time,
+        open,
+        high,
+        low,
+        close,
+        volume,
       })
     })
 
-    client.once(EventName.historicalDataEnd, () => {
+    client.once(EventName.result, () => {
       clearTimeout(timeout)
       resolve(bars)
     })
 
-    const now = new Date()
-    client.reqHistoricalData(reqId, contract, '', duration, barSize, 'TRADES', 1, 1, false)
+    client.reqHistoricalData(reqId, contract, '', duration, barSize as BarSizeSetting, WhatToShow.TRADES, 1, 1, false)
   })
 }

@@ -1,7 +1,8 @@
 // backend/src/modules/binance/binance.service.ts
 // Handles Binance REST + WebSocket for Crypto trading
 
-import Binance from 'binance-api-node'
+import Binance, { OrderType } from 'binance-api-node'
+import type { CandleChartInterval_LT, NewOrderSpot } from 'binance-api-node'
 import { config } from '../../config'
 
 // ── Client factory ────────────────────────────────────────────
@@ -38,8 +39,8 @@ export async function getBinanceTicker(symbol: string) {
   return { symbol, price: parseFloat(ticker[symbol]) }
 }
 
-export async function getBinanceCandles(symbol: string, interval = '1h', limit = 100) {
-  const candles = await binanceClient.candles({ symbol, interval, limit })
+export async function getBinanceCandles(symbol: string, interval: string = '1h', limit = 100) {
+  const candles = await binanceClient.candles({ symbol, interval: interval as CandleChartInterval_LT, limit })
   return candles.map(c => ({
     time:   c.openTime,
     open:   parseFloat(c.open),
@@ -69,15 +70,48 @@ export interface BinanceOrderParams {
 }
 
 export async function placeBinanceOrder(params: BinanceOrderParams) {
-  const order = await binanceClient.order({
-    symbol:       params.symbol,
-    side:         params.side,
-    type:         params.type,
-    quantity:     params.quantity.toString(),
-    price:        params.price?.toString(),
-    stopPrice:    params.stopPrice?.toString(),
-    timeInForce:  params.type === 'LIMIT' ? 'GTC' : undefined,
-  })
+  let orderPayload: NewOrderSpot
+  const baseOrder = {
+    symbol: params.symbol,
+    side: params.side,
+    quantity: params.quantity.toString(),
+  }
+
+  switch (params.type) {
+    case 'LIMIT':
+      orderPayload = {
+        ...baseOrder,
+        type: OrderType.LIMIT,
+        price: params.price?.toString() ?? '',
+        timeInForce: 'GTC',
+      }
+      break
+    case 'STOP_LOSS_LIMIT':
+      orderPayload = {
+        ...baseOrder,
+        type: OrderType.STOP_LOSS_LIMIT,
+        price: params.price?.toString() ?? '',
+        stopPrice: params.stopPrice?.toString() ?? '',
+        timeInForce: 'GTC',
+      }
+      break
+    case 'TAKE_PROFIT_LIMIT':
+      orderPayload = {
+        ...baseOrder,
+        type: OrderType.TAKE_PROFIT_LIMIT,
+        price: params.price?.toString() ?? '',
+        stopPrice: params.stopPrice?.toString() ?? '',
+        timeInForce: 'GTC',
+      }
+      break
+    default:
+      orderPayload = {
+        ...baseOrder,
+        type: OrderType.MARKET,
+      }
+  }
+
+  const order = await binanceClient.order(orderPayload)
 
   return {
     orderId:     order.orderId,

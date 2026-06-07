@@ -32,7 +32,7 @@ export async function getAlpacaAccount() {
 // ── Positions ─────────────────────────────────────────────────
 export async function getAlpacaPositions() {
   const positions = await alpacaClient.getPositions()
-  return positions.map(p => ({
+  return positions.map((p: any) => ({
     symbol:       p.symbol,
     qty:          parseFloat(p.qty),
     side:         p.side,
@@ -157,7 +157,15 @@ export async function cancelAlpacaOrder(orderId: string) {
 }
 
 export async function getAlpacaOrders(status: 'open' | 'closed' | 'all' = 'open') {
-  const orders = await alpacaClient.getOrders({ status, limit: 50 })
+  const orders = await alpacaClient.getOrders({
+    status,
+    until: undefined,
+    after: undefined,
+    limit: 50,
+    direction: undefined,
+    nested: undefined,
+    symbols: undefined,
+  })
   return orders.map((o: any) => ({
     id:       o.id,
     symbol:   o.symbol,

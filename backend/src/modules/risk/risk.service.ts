@@ -21,6 +21,7 @@ export interface RiskState {
 }
 
 const RISK_KEY = 'apex:risk:state'
+let memoryState: RiskState | null = null
 
 const DEFAULT_STATE: RiskState = {
   capitalPeak:       100_000,
@@ -40,12 +41,22 @@ const DEFAULT_STATE: RiskState = {
 
 // ── Read / Write ──────────────────────────────────────────────
 export async function getRiskState(): Promise<RiskState> {
+  if (!redis) {
+    memoryState ??= { ...DEFAULT_STATE }
+    return memoryState
+  }
+
   const raw = await redis.get(RISK_KEY)
   return raw ? JSON.parse(raw) : DEFAULT_STATE
 }
 
 async function saveRiskState(state: RiskState): Promise<void> {
   state.lastUpdated = new Date().toISOString()
+  if (!redis) {
+    memoryState = state
+    return
+  }
+
   await redis.set(RISK_KEY, JSON.stringify(state))
 }
 

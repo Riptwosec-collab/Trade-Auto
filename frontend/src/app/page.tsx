@@ -670,7 +670,7 @@ export default function Home() {
     </div>
   )
 }
-export default function Home() {
+function DeployPlaceholder() {
   return (
     <main style={{background:'#060D1A',minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',color:'#E8F0FF',fontFamily:'sans-serif'}}>
       <div style={{textAlign:'center'}}>
