@@ -1,0 +1,88 @@
+// backend/prisma/schema.prisma
+// Run: npx prisma migrate dev --name init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ── Users ─────────────────────────────────────────────────────
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  trades    Trade[]
+  alerts    Alert[]
+}
+
+// ── Trades ────────────────────────────────────────────────────
+model Trade {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+
+  broker       String   // "binance" | "alpaca" | "ibkr"
+  symbol       String
+  market       String   // "crypto" | "stock" | "forex" | "futures"
+  side         String   // "buy" | "sell"
+  orderType    String   // "market" | "limit" | "stop" | "bracket"
+  status       String   // "filled" | "cancelled" | "pending"
+
+  qty          Float
+  entryPrice   Float
+  exitPrice    Float?
+  stopLoss     Float?
+  takeProfit   Float?
+
+  pnl          Float?
+  pnlPct       Float?
+  riskAmount   Float?
+  rrRatio      Float?
+
+  brokerOrderId String?
+  notes        String?
+  tags         String[] @default([])
+
+  openedAt     DateTime @default(now())
+  closedAt     DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId, symbol])
+  @@index([broker, status])
+}
+
+// ── Alerts ────────────────────────────────────────────────────
+model Alert {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  symbol    String
+  condition String   // "price_above" | "price_below" | "rsi_above" | "volume_spike"
+  value     Float
+  channel   String   // "telegram" | "discord" | "email"
+  triggered Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ── Journal ───────────────────────────────────────────────────
+model JournalEntry {
+  id          String   @id @default(cuid())
+  tradeId     String?  @unique
+  symbol      String
+  setup       String?
+  execution   String?
+  psychology  String?
+  mistakes    String?
+  lessons     String?
+  rating      Int?     // 1-5
+  screenshot  String?  // URL
+  createdAt   DateTime @default(now())
+}
