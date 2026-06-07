@@ -18,6 +18,6 @@
     }
   ],
   "env": {
-    "NEXT_PUBLIC_API_URL": "@apex_api_url"
+    "NEXT_PUBLIC_API_URL": "https://apex-trade-backend.up.railway.app"
   }
 }
