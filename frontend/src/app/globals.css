@@ -1,0 +1,23 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #060D1A;
+  --card: #0F1C30;
+  --border: #1E2E4A;
+  --buy: #00E676;
+  --sell: #FF4560;
+  --accent: #3D7BFF;
+  --txt: #E8F0FF;
+  --txt2: #7A8FA6;
+}
+
+body {
+  background: var(--bg);
+  color: var(--txt);
+  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: 100vh;
+}
