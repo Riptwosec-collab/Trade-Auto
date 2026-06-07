@@ -1,0 +1,30 @@
+# ── Secrets — NEVER commit ───────────────────────────────────
+.env
+.env.local
+.env.production
+.env*.local
+*.pem
+secrets/
+
+# ── Node ──────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# ── Build outputs ─────────────────────────────────────────────
+dist/
+.next/
+out/
+build/
+
+# ── Prisma ────────────────────────────────────────────────────
+backend/prisma/migrations/
+
+# ── OS ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── IDE ───────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp

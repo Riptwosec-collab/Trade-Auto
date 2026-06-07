@@ -1,0 +1,33 @@
+# railway.toml — Deploy backend to Railway
+# https://railway.app/
+
+[build]
+builder = "nixpacks"
+buildCommand = "cd backend && npm install && npm run build"
+
+[deploy]
+startCommand = "cd backend && npm start"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+[[services]]
+name = "apex-trade-backend"
+
+  [services.variables]
+  NODE_ENV    = "production"
+  PORT        = "3001"
+
+# Add these in Railway dashboard → Variables tab:
+# APP_SECRET
+# DATABASE_URL        (from Railway Postgres plugin)
+# REDIS_URL           (from Railway Redis plugin)
+# BINANCE_API_KEY
+# BINANCE_API_SECRET
+# BINANCE_TESTNET     = false (for live)
+# ALPACA_API_KEY
+# ALPACA_API_SECRET
+# ALPACA_BASE_URL
+# ALPACA_DATA_URL
+# FRONTEND_URL        = your Vercel URL
