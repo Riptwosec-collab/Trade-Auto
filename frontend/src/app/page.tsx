@@ -7,6 +7,17 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 // ── Types ─────────────────────────────────────────────────────
 interface Ticker { symbol: string; price: string; change: string; up: boolean }
 interface Position { symbol: string; market: string; side: string; qty: number; pnl: number; pnlPct: number }
+interface BrokerFunding {
+  mode: 'testnet' | 'paper' | 'live'
+  configured: boolean
+  fundingUrl: string
+  apiKeysUrl: string
+}
+interface FundingStatus {
+  liveTradingEnabled: boolean
+  liveOrderConfirmation: string
+  brokers: Record<'binance' | 'alpaca' | 'ibkr', BrokerFunding>
+}
 
 // ── Mock data (used when backend offline) ─────────────────────
 const MOCK_TICKERS: Ticker[] = [
@@ -55,7 +66,7 @@ function MetricCard({ label, value, sub, color }: { label: string; value: string
 
 // ── Main Page ─────────────────────────────────────────────────
 export default function Home() {
-  const [page, setPage]           = useState<'dashboard'|'trade'|'portfolio'|'risk'|'bot'>('dashboard')
+  const [page, setPage]           = useState<'dashboard'|'trade'|'funding'|'portfolio'|'risk'|'bot'>('dashboard')
   const [lang, setLang]           = useState<'th'|'en'>('th')
   const [market, setMarket]       = useState<'crypto'|'stock'|'forex'>('crypto')
   const [symbol, setSymbol]       = useState('BTCUSDT')
@@ -75,6 +86,7 @@ export default function Home() {
       : 'Hello! Type a symbol to analyze e.g. NVDA, BTC, EUR/USD' }
   ])
   const [backendStatus, setBackendStatus] = useState<'checking'|'online'|'offline'>('checking')
+  const [fundingStatus, setFundingStatus] = useState<FundingStatus | null>(null)
 
   const t = (th: string, en: string) => lang === 'th' ? th : en
 
@@ -84,6 +96,11 @@ export default function Home() {
       .then(r => r.json())
       .then(() => setBackendStatus('online'))
       .catch(() => setBackendStatus('offline'))
+
+    fetch(`${API}/api/funding/status`, { signal: AbortSignal.timeout(3000) })
+      .then(r => r.json())
+      .then(json => { if (json.ok) setFundingStatus(json.data) })
+      .catch(() => {})
   }, [])
 
   // Symbol lists per market
@@ -106,11 +123,27 @@ export default function Home() {
     setTp(defaults[m].tp)
   }
 
-  async function placeOrder() {
+  async function placeOrder(orderSide: 'buy'|'sell') {
     const broker = market === 'crypto' ? 'binance' : market === 'stock' ? 'alpaca' : 'alpaca'
+    const brokerStatus = fundingStatus?.brokers[broker]
+    let liveConfirm: string | undefined
+
+    if (brokerStatus?.mode === 'live') {
+      if (!fundingStatus?.liveTradingEnabled) {
+        alert(t('ยังไม่ได้เปิด LIVE_TRADING_ENABLED=true ที่ backend', 'LIVE_TRADING_ENABLED=true is not set on the backend'))
+        return
+      }
+
+      liveConfirm = prompt(t(
+        `คำสั่งนี้จะส่งเงินจริงกับ ${broker.toUpperCase()} พิมพ์ ${fundingStatus.liveOrderConfirmation} เพื่อยืนยัน`,
+        `This sends a real-money order to ${broker.toUpperCase()}. Type ${fundingStatus.liveOrderConfirmation} to confirm`,
+      )) || undefined
+      if (liveConfirm !== fundingStatus.liveOrderConfirmation) return
+    }
+
     const body = market === 'crypto'
-      ? { symbol, side: side.toUpperCase(), type: orderType.toUpperCase(), quantity: parseFloat(qty), price: parseFloat(price) }
-      : { symbol, qty: parseFloat(qty), side, type: orderType, timeInForce: 'gtc', limitPrice: parseFloat(price) }
+      ? { symbol, side: orderSide.toUpperCase(), type: orderType.toUpperCase(), quantity: parseFloat(qty), price: parseFloat(price), liveConfirm }
+      : { symbol, qty: parseFloat(qty), side: orderSide, type: orderType, timeInForce: 'gtc', limitPrice: parseFloat(price), liveConfirm }
 
     try {
       const res = await fetch(`${API}/api/${broker}/order`, {
@@ -174,6 +207,7 @@ export default function Home() {
   const navItems = [
     { id: 'dashboard', label: t('หน้าหลัก','Dashboard'), icon: '📊' },
     { id: 'trade',     label: t('เทรด','Trade'),         icon: '⚡' },
+    { id: 'funding',   label: t('เติมเงิน','Funding'),    icon: '💳' },
     { id: 'portfolio', label: t('พอร์ต','Portfolio'),     icon: '💼' },
     { id: 'risk',      label: t('ความเสี่ยง','Risk'),     icon: '🛡️' },
     { id: 'bot',       label: t('บอท','Bot'),             icon: '🤖' },
@@ -464,16 +498,76 @@ export default function Home() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => { setSide('buy'); placeOrder() }}
+                  <button onClick={() => { setSide('buy'); placeOrder('buy') }}
                     className="py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-green-600 to-green-500 text-black hover:opacity-90 transition-all shadow-lg shadow-green-500/25 active:scale-95">
                     {t('ซื้อ Long','Buy Long')}
                   </button>
-                  <button onClick={() => { setSide('sell'); placeOrder() }}
+                  <button onClick={() => { setSide('sell'); placeOrder('sell') }}
                     className="py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-red-600 to-red-500 text-white hover:opacity-90 transition-all shadow-lg shadow-red-500/25 active:scale-95">
                     {t('ขาย Short','Sell Short')}
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── FUNDING ── */}
+        {page === 'funding' && (
+          <div className="space-y-4">
+            <div className="bg-[#0F1C30] border border-[#1E2E4A] rounded-xl p-4">
+              <div className="text-xs text-[#4A5F7A] uppercase tracking-widest mb-3 font-semibold flex items-center gap-1">
+                <span className="w-0.5 h-3 bg-blue-500 rounded"></span>
+                {t('เติมเงินและเชื่อมบัญชีจริง','Funding and live broker setup')}
+              </div>
+              <p className="text-sm text-[#7A8FA6] leading-relaxed max-w-3xl">
+                {t(
+                  'เงินต้องฝากเข้าบัญชี Binance, Alpaca หรือ IBKR โดยตรง แอปนี้ไม่รับฝาก ไม่ถือเงิน และไม่ทำธุรกรรมธนาคารแทนคุณ หลังเติมเงินและตั้งค่า API keys แล้วจึงส่งคำสั่งเทรดผ่าน backend ได้',
+                  'Funds must be deposited directly with Binance, Alpaca, or IBKR. This app does not custody money or process bank transfers. After funding and API keys are configured, orders can be routed through the backend.',
+                )}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {([
+                ['binance', 'Binance', 'Crypto spot'],
+                ['alpaca', 'Alpaca', 'US stocks'],
+                ['ibkr', 'IBKR', 'Multi-asset'],
+              ] as const).map(([key, name, caption]) => {
+                const broker = fundingStatus?.brokers[key]
+                const live = broker?.mode === 'live'
+                return (
+                  <div key={key} className="bg-[#0F1C30] border border-[#1E2E4A] rounded-xl p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-bold text-lg">{name}</div>
+                        <div className="text-xs text-[#7A8FA6]">{caption}</div>
+                      </div>
+                      <Badge type={live ? 'sell' : 'neutral'}>{broker?.mode?.toUpperCase() || 'CHECKING'}</Badge>
+                    </div>
+                    <div className="text-xs text-[#7A8FA6]">
+                      {broker?.configured ? t('API keys พร้อมใช้งาน','API keys configured') : t('ยังไม่ได้ตั้งค่า API keys','API keys not configured')}
+                    </div>
+                    {live && (
+                      <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-300 leading-relaxed">
+                        {fundingStatus?.liveTradingEnabled
+                          ? t('Live trading เปิดอยู่ ทุก order ต้องยืนยันก่อนส่งเงินจริง','Live trading is enabled. Every live order requires confirmation.')
+                          : t('ยังล็อก live trading อยู่ เปิด LIVE_TRADING_ENABLED=true ที่ backend ก่อนส่ง orderเงินจริง','Live trading is still locked. Set LIVE_TRADING_ENABLED=true on the backend before sending real orders.')}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      <a href={broker?.fundingUrl || '#'} target="_blank" rel="noreferrer"
+                        className="text-center py-2 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-500 transition-all">
+                        {t('เติมเงิน','Fund')}
+                      </a>
+                      <a href={broker?.apiKeysUrl || '#'} target="_blank" rel="noreferrer"
+                        className="text-center py-2 rounded-lg text-xs font-bold bg-[#060D1A] border border-[#1E2E4A] text-[#7A8FA6] hover:text-white transition-all">
+                        API Keys
+                      </a>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}

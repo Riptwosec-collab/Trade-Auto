@@ -6,6 +6,7 @@ import { z } from 'zod'
 
 const optionalUrl = z.string().url().optional().or(z.literal('').transform(() => undefined))
 const optionalString = z.string().optional().or(z.literal('').transform(() => undefined))
+const booleanFromString = (fallback: string) => z.string().default(fallback).transform(v => v === 'true')
 const numberFromString = (fallback: string) => z.string().default(fallback).transform((value, ctx) => {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) {
@@ -20,6 +21,8 @@ const envSchema = z.object({
   PORT: numberFromString('3001'),
   APP_SECRET: z.string().min(32).default('development_secret_change_me_32_chars'),
   FRONTEND_URL: z.string().url().default('http://localhost:3000'),
+  LIVE_TRADING_ENABLED: booleanFromString('false'),
+  LIVE_ORDER_CONFIRMATION: z.string().default('TRADE_LIVE'),
 
   DATABASE_URL: optionalString,
   REDIS_URL: optionalString,
@@ -27,7 +30,7 @@ const envSchema = z.object({
   // Binance. Live keys are only required when BINANCE_TESTNET=false.
   BINANCE_API_KEY: optionalString,
   BINANCE_API_SECRET: optionalString,
-  BINANCE_TESTNET: z.string().default('true').transform(v => v === 'true'),
+  BINANCE_TESTNET: booleanFromString('true'),
   BINANCE_TESTNET_API_KEY: optionalString,
   BINANCE_TESTNET_API_SECRET: optionalString,
 

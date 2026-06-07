@@ -64,3 +64,7 @@ export const riskAPI = {
   recordTrade: (pnl: number, capitalNow: number) =>
     req('/api/risk/record-trade', { method: 'POST', body: JSON.stringify({ pnl, capitalNow }) }),
 }
+
+export const fundingAPI = {
+  status: () => req('/api/funding/status'),
+}

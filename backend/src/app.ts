@@ -15,6 +15,7 @@ import binanceRouter from './modules/binance/binance.controller'
 import alpacaRouter  from './modules/alpaca/alpaca.controller'
 import ibkrRouter    from './modules/ibkr/ibkr.controller'
 import riskRouter    from './modules/risk/risk.controller'
+import fundingRouter from './modules/funding/funding.controller'
 
 const app  = express()
 const http = createServer(app)
@@ -52,6 +53,7 @@ app.use('/api/binance', binanceRouter)
 app.use('/api/alpaca',  alpacaRouter)
 app.use('/api/ibkr',    ibkrRouter)
 app.use('/api/risk',    riskRouter)
+app.use('/api/funding', fundingRouter)
 
 // ── 404 ───────────────────────────────────────────────────────
 app.use((_req, res) => {

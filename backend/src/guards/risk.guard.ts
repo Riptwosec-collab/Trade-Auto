@@ -3,11 +3,38 @@
 
 import { Request, Response, NextFunction } from 'express'
 import { config } from '../config'
-import { getRiskState, recordLoss, recordWin } from '../modules/risk/risk.service'
+import { getRiskState } from '../modules/risk/risk.service'
+
+function isLiveOrderPath(path: string) {
+  if (path.startsWith('/api/binance')) return !config.BINANCE_TESTNET
+  if (path.startsWith('/api/alpaca')) return !config.ALPACA_BASE_URL.includes('paper')
+  if (path.startsWith('/api/ibkr')) return !(config.IBKR_PORT === 7497 || config.IBKR_PORT === 4002)
+  return false
+}
 
 export async function riskGuard(req: Request, res: Response, next: NextFunction) {
   try {
     const state = await getRiskState()
+
+    if (isLiveOrderPath(req.originalUrl)) {
+      if (!config.LIVE_TRADING_ENABLED) {
+        return res.status(403).json({
+          ok: false,
+          blocked: true,
+          reason: 'LIVE_TRADING_DISABLED',
+          message: 'Live trading is disabled. Set LIVE_TRADING_ENABLED=true on the backend after funding and broker API setup are complete.',
+        })
+      }
+
+      if (req.body.liveConfirm !== config.LIVE_ORDER_CONFIRMATION) {
+        return res.status(403).json({
+          ok: false,
+          blocked: true,
+          reason: 'LIVE_CONFIRMATION_REQUIRED',
+          message: `Live order confirmation required. Send liveConfirm="${config.LIVE_ORDER_CONFIRMATION}".`,
+        })
+      }
+    }
 
     // ── 1. Kill switch ────────────────────────────────────────
     if (state.killSwitchActive) {
